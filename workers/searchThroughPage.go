@@ -5,16 +5,18 @@ import (
 	"net/http"
 	"golang.org/x/net/html"
 	"prooftestideas/gocrawler/perf"
+	"prooftestideas/gocrawler/pagescache"
 )
 
 /*
  * given a page's web address, search through the page for <a> start tokens and feed them into the queue
  * for next searching worker
  */
+// todo: deprecated
 func SearchThroughPage(workerid int, webaddress string) {
 
 	// signal that this worker is done
-	defer WorkerDone()
+	//defer ReturnWorkerToken()
 
 	// add a count for having indexed this page
 	defer perf.AddPageIndexed()
@@ -42,7 +44,7 @@ func SearchThroughPage(workerid int, webaddress string) {
 	count := 0
 	for weblink := range chWebLinks {
 
-		AddDiscoveredWeblink(weblink)
+		pagescache.AddDiscoveredWeblink(weblink)
 		count++
 	}
 

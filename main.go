@@ -2,12 +2,11 @@ package main
 
 import (
 	"log"
-	"sync"
-	"prooftestideas/gocrawler/workers"
 	"prooftestideas/gocrawler/perf"
 	"time"
 	"flag"
-	"runtime"
+	"prooftestideas/gocrawler/pagescache"
+	"prooftestideas/gocrawler/dispatcher"
 )
 
 var startPageLink *string
@@ -27,29 +26,21 @@ func main() {
 
 	log.Println("Starting ...")
 
-	// set the number of workers to be working
-	cpucount := runtime.NumCPU()
-	workers.SetMaxWorkersCount(cpucount)
-
-	workers.AddDiscoveredWeblink(*startPageLink)
-
-	var wg sync.WaitGroup
-
-	go workers.StartWorkerPool(&wg)
-	wg.Add(1)
-
+	chDone := make(chan bool, 10)
+	dispatcher1 := dispatcher.NewDispatcher(1)
+	go dispatcher1.StartDispatcher(*startPageLink, chDone, 1)
 
 	go PrintPerformanceStats()
-	// essentially, for now, this will run forever
-	wg.Wait()
 
+	// essentially, for now, this will run forever
+	<-chDone
 }
 
 func PrintPerformanceStats() {
 
 	for {
 		log.Printf("Pages indexed = %d PagesCache size = %d PagesCache dropped = %d InvalidPages = %d",
-			perf.GetPagesIndexed(), workers.GetPagesCacheSize(), workers.GetPagesDroppedCount(), perf.GetPageInvalidWeblinkCount())
+			perf.GetPagesIndexed(), pagescache.GetPagesCacheSize(), pagescache.GetPagesDroppedCount(), perf.GetPageInvalidWeblinkCount())
 
 		time.Sleep(10 * time.Second)
 	}

@@ -1,54 +1,67 @@
 package workers
 
 import (
-	"sync"
-	"errors"
-	"log"
 	"time"
-	"net/url"
+	"sync"
+	"net/http"
 	"prooftestideas/gocrawler/perf"
+	"golang.org/x/net/html"
+	"log"
 )
 
-
-
-var ErrOutOfCapacity = errors.New("out of worker capacity")
-var ErrInvalidWeblink = errors.New("invalid weblink")
-
-func StartWorkerPool(wg *sync.WaitGroup) {
-
-	for newlink := range chMasterWebLinks {
-
-		err := scheduleWebLinkToWorker(newlink)
-		switch err {
-			case nil:
-
-			case ErrInvalidWeblink:
-				//log.Printf("invalid weblink. skip it")
-
-			case ErrOutOfCapacity:
-				log.Printf("timed out waiting for pushing into the worker pool. Put the weblink back in there")
-				chMasterWebLinks <- newlink
-				log.Printf(err.Error())
-
-		}
-	}
-
-	wg.Done()
+type WorkerPool struct {
+	PoolId      int
+	State       bool
+	tokenCount  int
+	tokenLock   sync.RWMutex
+	NextUrlChan chan string
 }
 
-func scheduleWebLinkToWorker(newlink string) error {
+func NewWorkerPool(poolId, max_no_workers int) *WorkerPool {
 
-	// sanity check the weblink
-	if !validateURL(newlink) {
-		perf.AddPageInvalidWeblink()
-		return ErrInvalidWeblink
+	log.Printf("New worker Pool created with id:%d and workerCount=%d", poolId, max_no_workers)
+
+	return &WorkerPool{
+		PoolId:      poolId,
+		State:       true,
+		tokenCount:  max_no_workers,
+		NextUrlChan: make(chan string, 1000),
 	}
+}
 
-	for retrydelay:=1; retrydelay < 10; retrydelay++ {
+func (self *WorkerPool) GetActiveWorkers() int {
 
-		token := GetWorkerToken()
-		if token>=0 {
-			go SearchThroughPage(token, newlink)
+	return self.tokenCount
+}
+
+func (self *WorkerPool) IsCapacityAvailable() bool {
+
+	return self.tokenCount > 0
+}
+
+func (self *WorkerPool) StartWorkerPool() {
+
+	log.Printf("Started running new worker pool id:%d", self.PoolId)
+
+	for newlink := range self.NextUrlChan {
+
+		err := self.scheduleWebLinkToWorker(newlink)
+		if err != nil {
+
+			// out of capacity to schedule the weblink to a worker
+			self.NextUrlChan <- newlink
+		}
+
+	}
+}
+
+func (self *WorkerPool) scheduleWebLinkToWorker(newlink string) error {
+
+	for retrydelay := 1; retrydelay < 10; retrydelay++ {
+
+		workerid := self.GetWorkerToken()
+		if workerid >= 0 {
+			go self.ScrapePage(workerid, newlink)
 
 			return nil
 		}
@@ -58,20 +71,55 @@ func scheduleWebLinkToWorker(newlink string) error {
 	return ErrOutOfCapacity
 }
 
-func validateURL(rawurl string) bool {
+func (self *WorkerPool) GetWorkerToken() int {
 
-	u, err := url.Parse(rawurl)
-	if err!=nil {
-		return false
+	if self.tokenCount == 0 {
+		return -1
 	}
 
-	if u.Scheme!="http" && u.Scheme!="https" {
-		return false
+	self.tokenLock.Lock()
+	defer self.tokenLock.Unlock()
+
+	workerId := self.tokenCount
+
+	self.tokenCount--
+
+	return workerId
+}
+
+func (self *WorkerPool)ReturnWorkerToken() {
+
+	self.tokenLock.Lock()
+	defer self.tokenLock.Unlock()
+
+	self.tokenCount++
+}
+
+func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {
+
+	defer self.ReturnWorkerToken()
+
+	resp, err := http.Get(webaddress)
+	if err != nil {
+		log.Printf("error reading in start page link: %s", err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	//log.Printf("WorkerId:%d started with webpage: %s", workerid, webaddress)
+
+	defer perf.AddPageIndexed()
+
+	tokenizer := html.NewTokenizer(resp.Body)
+
+	// todo: store this in a database / inline cache
+	chTexts := make(chan string, 5000)
+	go readTokens(tokenizer, chTexts)
+
+	mastertext:= ""
+	for txt := range chTexts {
+		mastertext += txt
 	}
 
-	if u.Host=="" {
-		return false
-	}
-
-	return true
+	//log.Printf("workerId: %d weblink: %s textdump length: %d", workerid, webaddress, len(mastertext))
 }
