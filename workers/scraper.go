@@ -3,7 +3,7 @@ package workers
 import (
 	"golang.org/x/net/html"
 	"regexp"
-	"prooftestideas/gocrawler/pagescache"
+	"prooftestideas/gocrawler/urlcache"
 )
 
 /*
@@ -45,7 +45,7 @@ func readTokens(tokenizer *html.Tokenizer, chTexts chan string) {
 					tagkey, tagvalue, taghasattr = tokenizer.TagAttr()
 					if string(tagkey) == "href" {
 						// add the newly-found weblink in the pages cache
-						pagescache.AddDiscoveredWeblink(string(tagvalue))
+						urlcache.AddDiscoveredWeblink(string(tagvalue))
 						break
 					}
 				}

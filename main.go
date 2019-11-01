@@ -5,7 +5,7 @@ import (
 	"prooftestideas/gocrawler/perf"
 	"time"
 	"flag"
-	"prooftestideas/gocrawler/pagescache"
+	"prooftestideas/gocrawler/urlcache"
 	"prooftestideas/gocrawler/dispatcher"
 )
 
@@ -26,6 +26,10 @@ func main() {
 
 	log.Println("Starting ...")
 
+	if err := urlcache.InitCache(); err!=nil {
+		log.Fatalf("error setting up the url cache:%s", err.Error())
+	}
+
 	chDone := make(chan bool, 10)
 	dispatcher1 := dispatcher.NewDispatcher(1)
 	go dispatcher1.StartDispatcher(*startPageLink, chDone, 1)
@@ -39,8 +43,8 @@ func main() {
 func PrintPerformanceStats() {
 
 	for {
-		log.Printf("Pages indexed = %d PagesCache size = %d PagesCache dropped = %d InvalidPages = %d",
-			perf.GetPagesIndexed(), pagescache.GetPagesCacheSize(), pagescache.GetPagesDroppedCount(), perf.GetPageInvalidWeblinkCount())
+		log.Printf("Pages indexed = %d PagesCache size = %d PagesCache dropped = %d InvalidPages = %d urlCache size=%d",
+			perf.GetPagesIndexed(), urlcache.GetPagesCacheSize(), urlcache.GetPagesDroppedCount(), perf.GetPageInvalidWeblinkCount(), urlcache.GetUrlCacheSize())
 
 		time.Sleep(10 * time.Second)
 	}

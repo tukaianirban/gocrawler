@@ -7,6 +7,7 @@ import (
 	"prooftestideas/gocrawler/perf"
 	"golang.org/x/net/html"
 	"log"
+	"prooftestideas/gocrawler/urlcache"
 )
 
 type WorkerPool struct {
@@ -120,6 +121,8 @@ func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {
 	for txt := range chTexts {
 		mastertext += txt
 	}
+
+	urlcache.AddDiscoveredPage(webaddress, mastertext)
 
 	//log.Printf("workerId: %d weblink: %s textdump length: %d", workerid, webaddress, len(mastertext))
 }

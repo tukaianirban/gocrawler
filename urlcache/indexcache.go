@@ -1,8 +1,9 @@
-package pagescache
+package urlcache
 
 import "sync"
 
 // a local store of indexed pages and the number of times they were hit
+// simulated redis cache :-)
 
 var indexedpages = make(map[string]int)
 var indexLock sync.RWMutex

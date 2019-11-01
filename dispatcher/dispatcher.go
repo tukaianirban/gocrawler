@@ -4,7 +4,7 @@ import (
 	"sync"
 	"prooftestideas/gocrawler/workers"
 	"time"
-	"prooftestideas/gocrawler/pagescache"
+	"prooftestideas/gocrawler/urlcache"
 	"runtime"
 	"net/url"
 	"prooftestideas/gocrawler/perf"
@@ -12,7 +12,7 @@ import (
 )
 
 // a dispatcher schedules the next URL to be loaded to a worker pool
-// it pulls the next URL from the pagescache and tries to schedule it for scraping
+// it pulls the next URL from the urlcache and tries to schedule it for scraping
 // it takes into account various factors like frequency of hits on a certain domain (todo), availability of worker pools, etc
 // before dispatching the next URL to a worker pool
 
@@ -32,10 +32,10 @@ func NewDispatcher(maxPoolsCount int) *Dispatcher {
 	}
 }
 
-// we dont want many packages to call the pagescache package, hence this function
+// we dont want many packages to call the urlcache package, hence this function
 func (self *Dispatcher) StartDispatcher(starturl string, chDone chan bool, maxPoolsCount int) {
 
-	pagescache.PutBackWeblink(starturl)
+	urlcache.PutBackWeblink(starturl)
 	self.dispatcher()
 
 }
@@ -64,9 +64,9 @@ func (self *Dispatcher) dispatcher() {
 
 	for isAlive {
 
-		// pull the next URL to load, from the pagescache
+		// pull the next URL to load, from the urlcache
 		select {
-		case nextURL := <-pagescache.GetNextWeblink():
+		case nextURL := <-urlcache.GetNextWeblink():
 
 			if !validateURL(nextURL) {
 				// mark the URL as invalid, count it, and drop it
@@ -131,8 +131,8 @@ func (self *Dispatcher) scheduleURLToPool(url string) bool {
 	}
 
 	// no pools available
-	// Put the weblink back to pagescache
-	pagescache.PutBackWeblink(url)
+	// Put the weblink back to urlcache
+	urlcache.PutBackWeblink(url)
 
 	return false
 }

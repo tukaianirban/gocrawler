@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"golang.org/x/net/html"
 	"prooftestideas/gocrawler/perf"
-	"prooftestideas/gocrawler/pagescache"
+	"prooftestideas/gocrawler/urlcache"
 )
 
 /*
@@ -44,7 +44,7 @@ func SearchThroughPage(workerid int, webaddress string) {
 	count := 0
 	for weblink := range chWebLinks {
 
-		pagescache.AddDiscoveredWeblink(weblink)
+		urlcache.AddDiscoveredWeblink(weblink)
 		count++
 	}
 
