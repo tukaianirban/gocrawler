@@ -1,6 +1,9 @@
 package urlcache
 
-import "log"
+import (
+	"log"
+	"prooftestideas/gocrawler/page"
+)
 
 // inline cache of the next URLs to crawl through
 // the cache contains a unique list of websites and the number of times they were hit
@@ -70,7 +73,7 @@ func GetPagesDroppedCount() int {
 // this is a newly indexed page scraped up by a crawler
 // todo: add the url to redis cache
 // todo: add the url + data to database
-func AddDiscoveredPage(url, data string) {
+func AddDiscoveredPage(url string, page *page.Page) {
 
 	if err := redisClient.StoreURL(url); err != nil {
 		log.Printf("error storing URL:%s in cache: %s", url, err.Error())

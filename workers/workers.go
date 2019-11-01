@@ -114,15 +114,12 @@ func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {
 	tokenizer := html.NewTokenizer(resp.Body)
 
 	// todo: store this in a database / inline cache
-	chTexts := make(chan string, 5000)
-	go readTokens(tokenizer, chTexts)
+	//chTexts := make(chan string, 5000)
+	page := readTokens(tokenizer, webaddress)
 
-	mastertext:= ""
-	for txt := range chTexts {
-		mastertext += txt
-	}
 
-	urlcache.AddDiscoveredPage(webaddress, mastertext)
+	urlcache.AddDiscoveredPage(webaddress, page)
 
-	//log.Printf("workerId: %d weblink: %s textdump length: %d", workerid, webaddress, len(mastertext))
+	//log.Printf("workerId: %d weblink: %s textdump length: %d meta tags count=%d",
+	//	workerid, webaddress, len(page.Data), len(page.TagsMeta))
 }
