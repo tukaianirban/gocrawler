@@ -1,8 +1,13 @@
 package page
 
+type TagMeta map[string]string
+
+type TagA map[string]string
+
 type Page struct {
-	TagsMeta		[]map[string]string
-	TagsA			[]map[string]string
+	WebAddress		string
+	TagsMeta		[]TagMeta
+	TagsA			[]TagA
 
 	Data 			string
 }

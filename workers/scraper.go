@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"prooftestideas/gocrawler/urlcache"
 	"prooftestideas/gocrawler/page"
+	"log"
 )
 
 /*
@@ -20,10 +21,10 @@ func readTokens(tokenizer *html.Tokenizer, originalwebaddress string) *page.Page
 	spaceregexp := regexp.MustCompile(`\s+`)
 
 	thispage := &page.Page{
-		TagsA:		make([]map[string]string, 0),
-		TagsMeta:	make([]map[string]string, 0),
-
-		Data:		"",
+		WebAddress:		originalwebaddress,
+		TagsA:			make([]page.TagA, 0),
+		TagsMeta:		make([]page.TagMeta, 0),
+		Data:			"",
 	}
 
 	for {
@@ -65,12 +66,12 @@ func readTokens(tokenizer *html.Tokenizer, originalwebaddress string) *page.Page
 	}
 }
 
-func GetATags(tokenizer *html.Tokenizer, originalurl string) []map[string]string {
+func GetATags(tokenizer *html.Tokenizer, originalurl string) []page.TagA {
 
 	var tagkey, tagvalue []byte
 	taghasattr := true
 
-	atagslist := make([]map[string]string, 0)
+	atagslist := make([]page.TagA, 0)
 	for taghasattr {
 
 		tagkey, tagvalue, taghasattr = tokenizer.TagAttr()
@@ -80,6 +81,7 @@ func GetATags(tokenizer *html.Tokenizer, originalurl string) []map[string]string
 
 		if string(tagkey) == "href" {
 			hrefpathtransform := validateAndTransform(originalurl, string(tagvalue))
+			log.Printf("found new url: %s", hrefpathtransform)
 
 			// add the newly-found weblink in the pages cache
 			urlcache.AddDiscoveredWeblink(hrefpathtransform)
@@ -95,12 +97,12 @@ func GetATags(tokenizer *html.Tokenizer, originalurl string) []map[string]string
 	return atagslist
 }
 
-func GetMetaTags(tokenizer *html.Tokenizer) []map[string]string {
+func GetMetaTags(tokenizer *html.Tokenizer) []page.TagMeta {
 
 	var tagkey, tagvalue []byte
 	taghasattr := true
 
-	atagslist := make([]map[string]string, 0)
+	atagslist := make([]page.TagMeta, 0)
 	for taghasattr {
 
 		tagkey, tagvalue, taghasattr = tokenizer.TagAttr()

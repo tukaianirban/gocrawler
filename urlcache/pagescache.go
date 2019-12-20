@@ -3,11 +3,13 @@ package urlcache
 import (
 	"log"
 	"prooftestideas/gocrawler/page"
+	"time"
 )
 
 // inline cache of the next URLs to crawl through
 // the cache contains a unique list of websites and the number of times they were hit
-var chMasterWebLinks = make(chan string, 10000)
+var chMasterWebLinks 	= make(chan string, 10000)
+var chMasterPages		= make(chan *page.Page, 10000)
 var countDropped = 0
 
 var redisClient *RedisClient
@@ -78,5 +80,18 @@ func AddDiscoveredPage(url string, page *page.Page) {
 	if err := redisClient.StoreURL(url); err != nil {
 		log.Printf("error storing URL:%s in cache: %s", url, err.Error())
 	}
+
+	chMasterPages<- page
 	//log.Printf("stored new url + page contents in cache")
+}
+
+func GetNextPage() *page.Page {
+
+	select {
+		case nextPage:= <-chMasterPages:
+			return nextPage
+
+		case <-time.After(5 * time.Second):
+			return nil
+	}
 }

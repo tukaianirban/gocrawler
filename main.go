@@ -36,8 +36,13 @@ func main() {
 
 	go PrintPerformanceStats()
 
+	chFinishPageCacheDump := make(chan struct{})
+	go dumpWebPagesInCache(chFinishPageCacheDump)
+
 	// essentially, for now, this will run forever
 	<-chDone
+
+	chFinishPageCacheDump<- struct{}{}
 }
 
 func PrintPerformanceStats() {
@@ -50,4 +55,22 @@ func PrintPerformanceStats() {
 	}
 }
 
+func dumpWebPagesInCache(chDone chan struct{}) {
 
+	for {
+		select {
+			case <-chDone:
+				return
+
+			case <-time.After(1 * time.Second):
+
+		}
+
+		nextPage := urlcache.GetNextPage()
+		if nextPage == nil {
+			continue
+		}
+
+		log.Printf("next page scraped: %s", nextPage.WebAddress)
+	}
+}

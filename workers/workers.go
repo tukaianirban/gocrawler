@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 	"log"
 	"prooftestideas/gocrawler/urlcache"
+	"prooftestideas/gocrawler/page"
 )
 
 type WorkerPool struct {
@@ -74,7 +75,7 @@ func (self *WorkerPool) scheduleWebLinkToWorker(newlink string) error {
 
 		workerid := self.GetWorkerToken()
 		if workerid >= 0 {
-			go self.ScrapePage(workerid, newlink)
+			go self.ScrapePage(workerid, newlink, urlcache.AddDiscoveredPage)
 
 			return nil
 		}
@@ -110,7 +111,7 @@ func (self *WorkerPool)ReturnWorkerToken() {
 	}
 }
 
-func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {
+func (self *WorkerPool)ScrapePage(workerid int, webaddress string, fnAddToPagesCache func(string, *page.Page)) {
 
 	defer self.ReturnWorkerToken()
 
@@ -129,10 +130,10 @@ func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {
 
 	// todo: store this in a database / inline cache
 	//chTexts := make(chan string, 5000)
-	page := readTokens(tokenizer, webaddress)
+	pageScraped := readTokens(tokenizer, webaddress)
 
 
-	urlcache.AddDiscoveredPage(webaddress, page)
+	fnAddToPagesCache(webaddress, pageScraped)
 
 	//log.Printf("workerId: %d weblink: %s textdump length: %d meta tags count=%d",
 	//	workerid, webaddress, len(page.Data), len(page.TagsMeta))
