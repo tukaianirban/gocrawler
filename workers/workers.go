@@ -11,22 +11,40 @@ import (
 )
 
 type WorkerPool struct {
-	PoolId      int
-	State       bool
-	tokenCount  int
-	tokenLock   sync.RWMutex
-	NextUrlChan chan string
+	PoolId         int
+	State          bool
+	tokenCount     int
+	maxWorkerCount int
+	tokenLock      sync.RWMutex
+	nextUrlChan    chan string
 }
 
 func NewWorkerPool(poolId, max_no_workers int) *WorkerPool {
 
-	log.Printf("New worker Pool created with id:%d and workerCount=%d", poolId, max_no_workers)
+	log.Printf("New worker Pool created with id:%d and maxWorkerCount=%d", poolId, max_no_workers)
 
 	return &WorkerPool{
-		PoolId:      poolId,
-		State:       true,
-		tokenCount:  max_no_workers,
-		NextUrlChan: make(chan string, 1000),
+		PoolId:         poolId,
+		State:          true,
+		tokenCount:     max_no_workers,
+		maxWorkerCount: max_no_workers,
+		nextUrlChan:    make(chan string, 1000),
+	}
+}
+
+func (self *WorkerPool) StartWorkerPool() {
+
+	log.Printf("Started running new worker pool id:%d", self.PoolId)
+
+	for newlink := range self.nextUrlChan {
+
+		err := self.scheduleWebLinkToWorker(newlink)
+		if err != nil {
+
+			// out of capacity to schedule the weblink to a worker
+			self.nextUrlChan <- newlink
+		}
+
 	}
 }
 
@@ -40,20 +58,14 @@ func (self *WorkerPool) IsCapacityAvailable() bool {
 	return self.tokenCount > 0
 }
 
-func (self *WorkerPool) StartWorkerPool() {
+func (self *WorkerPool)Close() {
 
-	log.Printf("Started running new worker pool id:%d", self.PoolId)
+	close(self.nextUrlChan)
+}
 
-	for newlink := range self.NextUrlChan {
+func (self *WorkerPool)InsertNewUrl(url string) {
 
-		err := self.scheduleWebLinkToWorker(newlink)
-		if err != nil {
-
-			// out of capacity to schedule the weblink to a worker
-			self.NextUrlChan <- newlink
-		}
-
-	}
+	self.nextUrlChan <- url
 }
 
 func (self *WorkerPool) scheduleWebLinkToWorker(newlink string) error {
@@ -93,7 +105,9 @@ func (self *WorkerPool)ReturnWorkerToken() {
 	self.tokenLock.Lock()
 	defer self.tokenLock.Unlock()
 
-	self.tokenCount++
+	if self.tokenCount<self.maxWorkerCount {
+		self.tokenCount++
+	}
 }
 
 func (self *WorkerPool)ScrapePage(workerid int, webaddress string) {

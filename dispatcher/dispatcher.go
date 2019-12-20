@@ -104,7 +104,7 @@ func (self *Dispatcher) startNewWorkerPool(nextURL string) {
 	go self.poolsmap[currentLen].StartWorkerPool()
 
 	if nextURL != "" {
-		self.poolsmap[currentLen].NextUrlChan <- nextURL
+		self.poolsmap[currentLen].InsertNewUrl(nextURL)
 	}
 }
 
@@ -114,7 +114,7 @@ func (self *Dispatcher) scheduleURLToPool(url string) bool {
 
 		if self.poolsmap[id].State && self.poolsmap[id].IsCapacityAvailable() {
 
-			self.poolsmap[id].NextUrlChan <- url
+			self.poolsmap[id].InsertNewUrl(url)
 			return true
 		}
 	}
@@ -145,15 +145,15 @@ func (self *Dispatcher) stopWorkerPool(poolid int) {
 
 	// set the pool to deactivated
 	self.poolsmap[poolid].State = false
-	close(self.poolsmap[poolid].NextUrlChan)
+	self.poolsmap[poolid].Close()
 
 	// start a monitoring routine to remove the entry from the poolsmap when the workerpool has completely
 	// finished its working
 	go func(poolid int) {
 		ticker := time.NewTicker(10 * time.Second)
-		for range ticker.C {
+		toDelete := false
 
-			toDelete := false
+		for range ticker.C {
 
 			self.poolLock.RLock()
 			if self.poolsmap[poolid].GetActiveWorkers() == 0 && !self.poolsmap[poolid].State {
